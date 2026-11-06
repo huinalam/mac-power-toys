@@ -14,7 +14,12 @@ When reporting, include macOS version, target app/version, shortcut, full-screen
 
 ## Other limitations
 
-- Specific-window selection and guaranteed minimized-window restoration are not implemented.
+- The optional window switcher supports on-screen standard windows/dialogs. Hidden/minimized/other-Space windows are not supported.
+- AX-to-WindowServer matching uses PID and bounds, so identical-geometry windows may be ambiguous; public APIs do not guarantee coverage for every app.
+- Focus history begins when the feature is enabled; missing history uses window stacking order.
+- Accessibility permission must be granted manually. Revoked permission disables window enumeration; ad-hoc rebuilds may require granting permission again.
+- The switcher uses raise/activation requests. Their acceptance does not guarantee every target app will focus the requested window.
+- Full-screen and multiple-display edge cases need additional manual verification.
 - Opening a running app may trigger its reopen behavior, including creating a window.
 - macOS 14 is the deployment target, not a fully tested compatibility matrix.
 - Ad-hoc builds are intended for local development, not signed/notarized distribution.

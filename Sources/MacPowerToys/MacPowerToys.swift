@@ -27,6 +27,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = item
         ActivationDiagnostics.shared.statusItemVisible = { [weak self] in self?.statusItem?.isVisible ?? false }
         ActivationDiagnostics.shared.start()
+        store.windowSwitcher.onMessage = { [weak self] message in
+            self?.store.message = message
+            self?.showSettings()
+        }
+        store.windowSwitcher.start()
         updateMenu()
         subscription = store.objectWillChange.sink { [weak self] _ in
             Task { @MainActor in self?.updateMenu() }
@@ -88,6 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        store.windowSwitcher.stop()
         ActivationDiagnostics.shared.stop()
     }
 

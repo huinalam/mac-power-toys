@@ -19,7 +19,10 @@ Keep changes focused and add regression tests for meaningful behavior changes. E
 
 - Add an app, assign/change/remove a shortcut, and check duplicate rejection.
 - Switch from another app; launch a stopped app; activate a hidden app.
-- Check already-active apps, rapid switching, and modifier-key release.
+- Check already-active apps and rapid app switching.
+- Enable the window switcher with Accessibility permission; check multiple windows of the same app, Tab/Shift-Tab wraparound, fast Option release during loading, Escape cancellation, closed targets, and permission revocation.
+- Check existing Option-Tab conflicts and confirm app shortcuts remain immediate.
+- Never assert that mocked selection tests prove real Accessibility activation or permission behavior.
 - Check individual disable, global pause, and persistence after restarting.
 - Close settings and confirm menu bar operation continues.
 - Test deleted/moved targets, Korean/English input sources, multiple displays, Spaces, full screen, and minimized windows.

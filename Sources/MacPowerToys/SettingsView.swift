@@ -23,8 +23,11 @@ struct SettingsView: View {
             }
             .padding(24)
 
+            WindowSwitcherSettings(controller: store.windowSwitcher) { store.setWindowSwitcherEnabled($0) }
+                .padding(.horizontal, 24).padding(.bottom, 16)
+
             if store.isPaused {
-                Label("모든 앱 단축키가 일시 정지되어 있습니다.", systemImage: "pause.circle.fill")
+                Label("모든 단축키가 일시 정지되어 있습니다.", systemImage: "pause.circle.fill")
                     .foregroundStyle(.orange)
                     .padding(.horizontal, 24).padding(.bottom, 16)
             }
@@ -75,6 +78,7 @@ struct SettingsView: View {
         } message: { Text(store.message ?? "") }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             store.refreshLoginStatus()
+            store.windowSwitcher.refreshPermission()
         }
     }
 
@@ -106,5 +110,33 @@ struct SettingsView: View {
                 .help("목록에서 제거").accessibilityLabel("\(entry.name) 제거")
         }
         .padding(.horizontal, 24).padding(.vertical, 14)
+    }
+}
+
+
+private struct WindowSwitcherSettings: View {
+    @ObservedObject var controller: WindowSwitcherController
+    let setEnabled: (Bool) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Toggle("⌥Tab 창 전환기", isOn: Binding(get: { controller.enabled }, set: { setEnabled($0) }))
+                .font(.headline)
+            Text("앱 아이콘과 창 제목으로 선택합니다. 현재 화면의 일반 창을 대상으로 하며 미리보기는 캡처하지 않습니다.")
+                .font(.caption).foregroundStyle(.secondary)
+            if controller.enabled {
+                if controller.trusted {
+                    Label("손쉬운 사용 권한 허용됨 · Option을 놓으면 선택", systemImage: "checkmark.circle")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else {
+                    HStack {
+                        Text("창 선택을 위해 손쉬운 사용 권한이 필요합니다.").font(.caption)
+                        Button("권한 요청") { controller.requestPermission() }
+                        Button("시스템 설정") { controller.openPermissionSettings() }
+                        Button("다시 확인") { controller.refreshPermission() }
+                    }
+                }
+            }
+        }
     }
 }

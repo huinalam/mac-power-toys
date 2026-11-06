@@ -2,7 +2,7 @@
 
 English | [한국어](docs/README.ko.md)
 
-A native macOS menu bar utility built with SwiftUI and AppKit, inspired by Microsoft PowerToys. Its first feature assigns global keyboard shortcuts to launch or switch to applications, inspired by [Thor](https://github.com/gbammc/Thor).
+A native macOS menu bar utility built with SwiftUI and AppKit, inspired by Microsoft PowerToys. It provides app shortcuts inspired by [Thor](https://github.com/gbammc/Thor) and an optional icon-and-title window switcher.
 
 **Early development preview.** An intermittent menu bar disappearance during shortcut switching is still under investigation. See [known issues](docs/KNOWN_ISSUES.md). This is an independent project, not an official Microsoft or Apple product.
 
@@ -13,6 +13,7 @@ A native macOS menu bar utility built with SwiftUI and AppKit, inspired by Micro
 - Prevent duplicate shortcuts within the app, including disabled entries.
 - Enable shortcuts individually or pause all shortcuts.
 - Keep settings across launches and optionally start at login.
+- Use Option-Tab to choose individual windows by app icon and title, without thumbnails.
 - Inspect small, local diagnostic logs to help investigate switching issues.
 
 The current settings UI is in Korean; shortcut recorder text follows the dependency's localization.
@@ -51,7 +52,22 @@ While an open request is in flight, a new request replaces the previous pending 
 
 The play button tests launching even when shortcuts are paused. Removing an entry does not delete the actual application. An already-active app is left unchanged. Settings are stored locally in UserDefaults.
 
-Activation uses `NSWorkspace.openApplication`. The target app may open a new window in response to a reopen event. Specific window selection, forced Space movement, and guaranteed restoration of minimized windows are not implemented. The app does not request Accessibility or Input Monitoring permissions. Conflicts with every other application's shortcuts cannot be detected.
+Activation uses `NSWorkspace.openApplication`. The target app may open a new window in response to a reopen event. App shortcuts select an application, while the optional window switcher selects a specific window with Accessibility permission. Forced Space movement and guaranteed restoration of minimized windows are not implemented. App shortcuts alone do not require Accessibility permission; Input Monitoring and Screen Recording are not requested. Conflicts with every other application's shortcuts cannot be detected.
+
+## Option-Tab window switcher
+
+Enable **⌥Tab 창 전환기** in settings, then use **권한 요청** (Request permission) to grant Accessibility access in System Settings. Return to settings and click **다시 확인** (Check again). Install the app in a stable location before granting access; rebuilding an ad-hoc signed app can require renewed permission.
+
+- Hold Option and press Tab to show the list and select the next window.
+- Continue pressing Tab, or Shift-Tab to move backwards.
+- Release Option (or press Enter) to switch to the selected window; Escape cancels.
+- Arrow keys also move the selection. The overlay does not activate the utility itself.
+- App shortcuts retain their immediate key-down behavior. Global pause also pauses the window switcher.
+- Option-Tab and Shift-Option-Tab are reserved while the feature is enabled. Existing app shortcut conflicts must be resolved first; nothing is silently overwritten. Other window-switcher utilities using these keys should be disabled or configured differently.
+
+The first version lists standard windows and dialogs matched to on-screen, normal-layer windows across the current visible displays. Hidden apps, minimized windows, other Spaces, and special utility windows are outside the supported scope. Public APIs do not expose a universal mapping between Accessibility windows and WindowServer IDs: this implementation matches process and bounds, so unusual or identical-geometry windows can be omitted or ambiguous. Recent focus history is kept in memory; unobserved windows fall back to front-to-back order. A slow app may be omitted after the bounded enumeration pass. See [known issues](docs/KNOWN_ISSUES.md).
+
+This feature uses public Accessibility and CoreGraphics metadata APIs. It does not capture screen images, request screen recording, or use AltTab source/private APIs. Window titles exist in memory for display and are not added to diagnostic logs.
 
 ## Diagnostics and privacy
 
@@ -76,6 +92,8 @@ Use **진단 로그 폴더 열기…** (Open diagnostic log folder) to inspect l
 - `SettingsView`: SwiftUI settings interface.
 - `AppDelegate`: menu bar and settings window lifecycle.
 - `ActivationDiagnostics`: bounded local diagnostic recording.
+- `WindowSwitcherController` / `WindowSelection`: optional switcher session, keyboard navigation, and focus history.
+- `WindowAccess`: bounded Accessibility queries on a serial worker queue and exact-window raise requests.
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) for test coverage and the manual verification checklist. Commit `Package.resolved` to keep dependency resolution reproducible.
 

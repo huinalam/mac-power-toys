@@ -6,6 +6,8 @@ import UniformTypeIdentifiers
 
 @MainActor
 final class AppStore: ObservableObject {
+    let windowSwitcher: WindowSwitcherController
+
     @Published private(set) var entries: [AppEntry] = []
     @Published var message: String?
     @Published private(set) var launchErrors: [UUID: String] = [:]
@@ -15,6 +17,7 @@ final class AppStore: ObservableObject {
         didSet {
             defaults.set(isPaused, forKey: "shortcutsPaused")
             KeyboardShortcuts.isEnabled = !isPaused
+            windowSwitcher.paused = isPaused
             if isPaused { switchCoordinator.cancel { $0.isShortcut } }
         }
     }
@@ -36,6 +39,7 @@ final class AppStore: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        windowSwitcher = WindowSwitcherController(defaults: defaults)
         repository = SettingsRepository(defaults: defaults)
         isPaused = defaults.bool(forKey: "shortcutsPaused")
         do {
@@ -46,6 +50,14 @@ final class AppStore: ObservableObject {
         }
         for entry in entries { register(entry) }
         KeyboardShortcuts.isEnabled = !isPaused
+        windowSwitcher.paused = isPaused
+        if windowSwitcher.enabled && entries.contains(where: {
+            guard let shortcut = KeyboardShortcuts.getShortcut(for: $0.shortcutName) else { return false }
+            return WindowSwitcherController.shortcuts.contains(shortcut)
+        }) {
+            windowSwitcher.setEnabled(false)
+            message = "기존 앱 단축키가 ⌥Tab 또는 ⇧⌥Tab을 사용 중이어서 창 전환기를 껐습니다."
+        }
         refreshLoginStatus()
     }
 
@@ -101,7 +113,21 @@ final class AppStore: ObservableObject {
         persist()
     }
 
+    func setWindowSwitcherEnabled(_ enabled: Bool) {
+        if enabled, let conflict = entries.first(where: {
+            guard let shortcut = KeyboardShortcuts.getShortcut(for: $0.shortcutName) else { return false }
+            return WindowSwitcherController.shortcuts.contains(shortcut)
+        }) {
+            message = "‘\(conflict.name)’의 단축키가 ⌥Tab 또는 ⇧⌥Tab과 겹칩니다. 먼저 해당 단축키를 변경해주세요."
+            return
+        }
+        windowSwitcher.setEnabled(enabled)
+    }
+
     func validate(_ shortcut: KeyboardShortcuts.Shortcut, for entry: AppEntry) -> KeyboardShortcuts.ValidationResult {
+        if windowSwitcher.enabled && WindowSwitcherController.shortcuts.contains(shortcut) {
+            return .disallow(reason: String("창 전환기가 사용하는 단축키입니다."))
+        }
         if let conflict = entries.first(where: {
             $0.id != entry.id && KeyboardShortcuts.getShortcut(for: $0.shortcutName) == shortcut
         }) {
@@ -123,6 +149,7 @@ final class AppStore: ObservableObject {
     }
 
     func launch(_ entry: AppEntry, source: String = "manual") {
+        windowSwitcher.cancel()
         switchCoordinator.request(entry, source: source)
     }
 
