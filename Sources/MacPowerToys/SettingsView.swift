@@ -16,7 +16,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button(action: store.addApplications) {
+                Button(action: { store.addApplications() }) {
                     Label("앱 추가", systemImage: "plus")
                 }
                 .keyboardShortcut("o")
@@ -35,7 +35,7 @@ struct SettingsView: View {
                     Text("자주 쓰는 앱부터 추가하세요").font(.headline)
                     Text("앱을 선택하고 단축키를 입력하면 바로 사용할 수 있습니다.")
                         .foregroundStyle(.secondary)
-                    Button("앱 선택…", action: store.addApplications).buttonStyle(.borderedProminent)
+                    Button("앱 선택…", action: { store.addApplications() }).buttonStyle(.borderedProminent)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -54,7 +54,7 @@ struct SettingsView: View {
                     Toggle("단축키 일시 정지", isOn: $store.isPaused)
                     Spacer()
                     Toggle("로그인 시 실행", isOn: Binding(
-                        get: { store.loginEnabled }, set: store.setLoginEnabled
+                        get: { store.loginEnabled }, set: { store.setLoginEnabled($0) }
                     ))
                 }
                 if store.loginNeedsApproval {

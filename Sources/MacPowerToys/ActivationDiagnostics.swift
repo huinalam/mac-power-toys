@@ -141,25 +141,23 @@ final class ActivationDiagnostics {
             NSRunningApplication.runningApplications(withBundleIdentifier: $0).first(where: { !$0.isTerminated })
         }
         var fields = extra
-        fields.merge([
-            "timestamp": Date().ISO8601Format(.iso8601(timeZone: .gmt, includingFractionalSeconds: true)),
-            "uptime": String(format: "%.3f", ProcessInfo.processInfo.systemUptime),
-            "event": event,
-            "request": id ?? "none",
-            "target": target ?? "none",
-            "frontmost": front?.bundleIdentifier ?? "none",
-            "frontmostPID": String(front?.processIdentifier ?? 0),
-            "targetActive": String(targetApp?.isActive ?? false),
-            "targetHidden": String(targetApp?.isHidden ?? false),
-            "selfActive": String(NSApp?.isActive ?? false),
-            "systemPresentationRaw": String(options.rawValue),
-            "hideMenuBar": String(options.contains(.hideMenuBar)),
-            "autoHideMenuBar": String(options.contains(.autoHideMenuBar)),
-            "fullScreen": String(options.contains(.fullScreen)),
-            "menuBarVisible": String(NSMenu.menuBarVisible()),
-            "statusItemVisible": statusItemVisible.map { String($0()) } ?? "unknown",
-            "modifierFlags": String(NSEvent.modifierFlags.rawValue)
-        ], uniquingKeysWith: { _, new in new })
+        fields["timestamp"] = Date().ISO8601Format(.iso8601(timeZone: .gmt, includingFractionalSeconds: true))
+        fields["uptime"] = String(format: "%.3f", ProcessInfo.processInfo.systemUptime)
+        fields["event"] = event
+        fields["request"] = id ?? "none"
+        fields["target"] = target ?? "none"
+        fields["frontmost"] = front?.bundleIdentifier ?? "none"
+        fields["frontmostPID"] = String(front?.processIdentifier ?? 0)
+        fields["targetActive"] = String(targetApp?.isActive ?? false)
+        fields["targetHidden"] = String(targetApp?.isHidden ?? false)
+        fields["selfActive"] = String(NSApp?.isActive ?? false)
+        fields["systemPresentationRaw"] = String(options.rawValue)
+        fields["hideMenuBar"] = String(options.contains(.hideMenuBar))
+        fields["autoHideMenuBar"] = String(options.contains(.autoHideMenuBar))
+        fields["fullScreen"] = String(options.contains(.fullScreen))
+        fields["menuBarVisible"] = String(NSMenu.menuBarVisible())
+        fields["statusItemVisible"] = statusItemVisible.map { String($0()) } ?? "unknown"
+        fields["modifierFlags"] = String(NSEvent.modifierFlags.rawValue)
         writer.append(fields)
     }
 
