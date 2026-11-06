@@ -188,14 +188,10 @@ final class AppStore: ObservableObject {
     }
 
     private func register(_ entry: AppEntry) {
-        KeyboardShortcuts.onKeyUp(for: entry.shortcutName) { [weak self] in
-            // Queue after key-up; the coordinator also waits for modifier release.
-            // Pending targets are replaced instead of opening multiple apps at once.
-            DispatchQueue.main.async { [weak self] in
-                guard let self, !self.isPaused,
-                      let current = self.entries.first(where: { $0.id == entry.id }), current.isEnabled else { return }
-                self.launch(current, source: "shortcut.modifiersReleased")
-            }
+        KeyboardShortcuts.onKeyDown(for: entry.shortcutName) { [weak self] in
+            guard let self, !self.isPaused,
+                  let current = self.entries.first(where: { $0.id == entry.id }), current.isEnabled else { return }
+            self.launch(current, source: "shortcut.keyDown")
         }
         if !entry.isEnabled { KeyboardShortcuts.disable(entry.shortcutName) }
     }
