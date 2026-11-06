@@ -1,0 +1,24 @@
+# Build outputs and local IDE state
+.build/
+.swiftpm/
+dist/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+.DS_Store
+
+# Local diagnostics and preferences
+*.log
+*.jsonl
+logs/
+local-settings/
+
+# Credentials and signing material
+.env
+.env.*
+!.env.example
+*.p12
+*.p8
+*.key
+*.mobileprovision
+*.provisionprofile
