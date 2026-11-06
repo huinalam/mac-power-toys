@@ -44,8 +44,10 @@ To use start at login, move the app to `/Applications` and launch it there befor
 
 1. Choose **앱 추가** (Add app) in settings.
 2. Click the shortcut recorder beside the app and press a key combination.
-3. Release the non-modifier key to launch or switch to that app.
+3. Release the shortcut key and all modifiers (Command, Option, Control, Shift, Fn) to launch or switch. A 50 ms quiet period avoids switching during key release.
 4. Close settings; the app stays in the menu bar. Use the ⌘ icon to reopen settings, pause shortcuts, or quit.
+
+While waiting, a new request replaces the previous pending target. Open requests are serialized; an already-submitted system operation cannot be cancelled. Caps Lock does not block switching.
 
 The play button tests launching even when shortcuts are paused. Removing an entry does not delete the actual application. An already-active app is left unchanged. Settings are stored locally in UserDefaults.
 

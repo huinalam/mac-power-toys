@@ -40,7 +40,7 @@ struct AppStoreTests {
         store.remove(second)
     }
 
-    @Test func pausePersistsAndMissingAppReportsFailure() {
+    @Test func pausePersistsAndMissingAppReportsFailure() async throws {
         let defaults = isolatedDefaults()
         let store = AppStore(defaults: defaults)
         store.isPaused = true
@@ -48,6 +48,9 @@ struct AppStoreTests {
         #expect(!KeyboardShortcuts.isEnabled)
         let missing = AppEntry(name: "Missing", bundleIdentifier: "dev.macpowertoys.nonexistent", path: "/missing.app")
         store.launch(missing)
+        for _ in 0..<100 where store.launchErrors[missing.id] == nil {
+            try await Task.sleep(for: .milliseconds(20))
+        }
         #expect(store.launchErrors[missing.id] != nil)
         store.isPaused = false
     }

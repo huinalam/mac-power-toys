@@ -15,12 +15,23 @@ final class AppStore: ObservableObject {
         didSet {
             defaults.set(isPaused, forKey: "shortcutsPaused")
             KeyboardShortcuts.isEnabled = !isPaused
+            if isPaused { switchCoordinator.cancel { $0.isShortcut } }
         }
     }
 
     private let defaults: UserDefaults
     private let repository: SettingsRepository
-    private var launching: Set<UUID> = []
+    private lazy var switchCoordinator = SwitchCoordinator(
+        isAllowed: { [weak self] request in
+            guard let self else { return false }
+            if !request.isShortcut { return true }
+            return !self.isPaused && self.entries.contains { $0.id == request.entry.id && $0.isEnabled }
+        },
+        perform: { [weak self] request, completion in
+            guard let self else { completion(); return }
+            self.performLaunch(request.entry, source: request.source, completion: completion)
+        }
+    )
     private var canSave = true
 
     init(defaults: UserDefaults = .standard) {
@@ -72,6 +83,7 @@ final class AppStore: ObservableObject {
     }
 
     func remove(_ entry: AppEntry) {
+        switchCoordinator.cancel { $0.entry.id == entry.id }
         KeyboardShortcuts.disable(entry.shortcutName)
         KeyboardShortcuts.removeHandler(for: entry.shortcutName)
         KeyboardShortcuts.reset(entry.shortcutName)
@@ -83,6 +95,7 @@ final class AppStore: ObservableObject {
     func setEnabled(_ enabled: Bool, for entry: AppEntry) {
         guard let index = entries.firstIndex(where: { $0.id == entry.id }) else { return }
         entries[index].isEnabled = enabled
+        if !enabled { switchCoordinator.cancel { $0.isShortcut && $0.entry.id == entry.id } }
         if enabled { KeyboardShortcuts.enable(entry.shortcutName) }
         else { KeyboardShortcuts.disable(entry.shortcutName) }
         persist()
@@ -110,17 +123,18 @@ final class AppStore: ObservableObject {
     }
 
     func launch(_ entry: AppEntry, source: String = "manual") {
+        switchCoordinator.request(entry, source: source)
+    }
+
+    private func performLaunch(_ entry: AppEntry, source: String, completion: @escaping @MainActor () -> Void) {
         let diagnostics = ActivationDiagnostics.shared
         let request = diagnostics.begin(target: entry.bundleIdentifier, source: source)
-        guard !launching.contains(entry.id) else {
-            diagnostics.record("switch.skipped.pending", id: request, target: entry.bundleIdentifier)
-            return
-        }
         launchErrors[entry.id] = nil
         let running = NSRunningApplication.runningApplications(withBundleIdentifier: entry.bundleIdentifier)
             .first(where: { !$0.isTerminated })
         if running?.isActive == true {
             diagnostics.record("switch.skipped.alreadyActive", id: request, target: entry.bundleIdentifier)
+            completion()
             return
         }
 
@@ -130,10 +144,10 @@ final class AppStore: ObservableObject {
         guard let url = running?.bundleURL ?? resolvedURL(for: entry) else {
             diagnostics.record("switch.failed.missingApp", id: request, target: entry.bundleIdentifier)
             launchErrors[entry.id] = "앱을 찾을 수 없습니다. ‘앱 추가’에서 다시 선택해주세요."
+            completion()
             return
         }
         // NSWorkspace handles cooperative activation; no manual yield is needed.
-        launching.insert(entry.id)
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
         configuration.createsNewApplicationInstance = false
@@ -147,11 +161,11 @@ final class AppStore: ObservableObject {
             let errorCode = (error as NSError?)?.code ?? 0
             let returnedPID = app?.processIdentifier ?? 0
             Task { @MainActor in
+                defer { completion() }
                 diagnostics.record("switch.openCompleted", id: request, target: entry.bundleIdentifier,
                                    extra: ["errorDomain": errorDomain, "errorCode": String(errorCode),
                                            "returnedPID": String(returnedPID)])
                 guard let self else { return }
-                self.launching.remove(entry.id)
                 guard self.entries.contains(where: { $0.id == entry.id }) else { return }
                 self.launchErrors[entry.id] = errorDescription
             }
@@ -175,12 +189,12 @@ final class AppStore: ObservableObject {
 
     private func register(_ entry: AppEntry) {
         KeyboardShortcuts.onKeyUp(for: entry.shortcutName) { [weak self] in
-            // Finish dispatching the hot-key release before asking Launch Services
-            // to switch applications. Recheck state in case it changed meanwhile.
+            // Queue after key-up; the coordinator also waits for modifier release.
+            // Pending targets are replaced instead of opening multiple apps at once.
             DispatchQueue.main.async { [weak self] in
                 guard let self, !self.isPaused,
                       let current = self.entries.first(where: { $0.id == entry.id }), current.isEnabled else { return }
-                self.launch(current, source: "shortcut.keyUp")
+                self.launch(current, source: "shortcut.modifiersReleased")
             }
         }
         if !entry.isEnabled { KeyboardShortcuts.disable(entry.shortcutName) }
